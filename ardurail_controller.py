@@ -18,6 +18,10 @@ from pynput.keyboard import Controller, Key
 # Coloque True para descobrir os índices dos botões
 INSPECT = False  # ou use: python script.py --inspect
 
+# Config de repetição para "hold"
+REPEAT_DELAY = 0.35      # atraso inicial antes de repetir (segundos)
+REPEAT_INTERVAL = 0.05   # intervalo entre repetições (segundos)
+
 # ===================== CONFIG =====================
 JOYSTICK_ID = 0  # se só tiver um controle, deixe 0
 
@@ -42,6 +46,13 @@ SPECIALS = {
     'delete': Key.delete,
     'end': Key.end,
     'pagedown': Key.page_down,
+}
+
+# Botões que terão comportamento de HOLD (auto-repeat)
+HOLD_BUTTONS = {
+    BUTTON_A: 'a',
+    BUTTON_S: 's',
+    BUTTON_END: 'end',
 }
 
 # ==================================================
@@ -74,6 +85,10 @@ def main():
     num_buttons = js.get_numbuttons()
     last_state = [0] * num_buttons
 
+    # Controle de repetição por botão de HOLD
+    # Estrutura: hold_state[b] = {"held": bool, "next_time": float}
+    hold_state = {}
+
     current_idx = 0
     print(f"Índice inicial: {current_idx} -> tecla '{KEY_SEQUENCE[current_idx]}'")
 
@@ -81,10 +96,43 @@ def main():
 
     while True:
         pygame.event.pump()
+        now = time.time()
 
         for b in range(num_buttons):
             state = js.get_button(b)
 
+            # Botões com comportamento de HOLD
+            if b in HOLD_BUTTONS:
+                key_to_type = HOLD_BUTTONS[b]
+
+                # Transição de subida: 0 -> 1 (primeira pressão)
+                if state == 1 and last_state[b] == 0:
+                    # Dispara a primeira tecla imediatamente
+                    press_key(key_to_type)
+                    # Agenda as próximas repetições
+                    hold_state[b] = {"held": True, "next_time": now + REPEAT_DELAY}
+                    print(f"HOLD START [{b}] -> {key_to_type}")
+
+                # Mantido pressionado: 1 -> 1
+                elif state == 1 and last_state[b] == 1:
+                    info = hold_state.get(b)
+                    if info and info.get("held") and now >= info.get("next_time", 0):
+                        press_key(key_to_type)
+                        # agenda próxima repetição
+                        info["next_time"] = now + REPEAT_INTERVAL
+
+                # Soltou: 1 -> 0
+                elif state == 0 and last_state[b] == 1:
+                    if b in hold_state:
+                        hold_state[b]["held"] = False
+                        hold_state.pop(b, None)
+                        print(f"HOLD END   [{b}]")
+
+                # Atualiza e segue para o próximo botão
+                last_state[b] = state
+                continue
+
+            # Botões normais, apenas borda de subida
             if state == 1 and last_state[b] == 0:
                 # Mapeamento de botões
                 if b == BUTTON_A:
