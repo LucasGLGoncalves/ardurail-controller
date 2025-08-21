@@ -1,5 +1,7 @@
 # ardurail-controller
 
+![Ardurail Controller](https://i.imgur.com/aWchfRX.png "Ardurail Controller")
+
 Controller id = A<br>
 Gamepad input = 17<br>
 Arduino pin = 2
