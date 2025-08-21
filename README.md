@@ -46,6 +46,6 @@ Controller id = 3<br>
 Gamepad input = Z<br>
 Arduino pin = A4
 
-Controller id = 4
-Gamepad input = RX
+Controller id = 4<br>
+Gamepad input = RX<br>
 Arduino pin = A3
