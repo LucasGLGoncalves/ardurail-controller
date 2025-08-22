@@ -49,3 +49,5 @@ Arduino pin = A4
 Controller id = 4<br>
 Gamepad input = RX<br>
 Arduino pin = A3
+
+Arduino Uno R3 HID Reset
