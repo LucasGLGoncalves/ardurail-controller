@@ -7,9 +7,7 @@ import time
 import pygame
 
 PROFILES_PATH = Path("profiles.json")
-MECHANIK_SCRIPT = "mechanik_controller.py"  # seu script atual (não mexemos nele)
-
-# --------------------- Menus ---------------------
+MECHANIK_SCRIPT = "mechanik_controller.py"  # seu script oficial
 
 MAIN_HEADER = """
 Ardurail Controller
@@ -58,9 +56,7 @@ Obs.: em muitos sistemas o pynput não diferencia numérico do topo do teclado.
 Os aliases 'numX' mapeiam para os mesmos sinais (0–9, +, -, *, /, ., Enter).
 """
 
-
-# --------------------- Utilidades de arquivo ---------------------
-
+# ---------- I/O perfis ----------
 def load_profiles():
     if PROFILES_PATH.exists():
         return json.loads(PROFILES_PATH.read_text(encoding="utf-8"))
@@ -69,14 +65,12 @@ def load_profiles():
 def save_profiles(data):
     PROFILES_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-# --------------------- Execução de controladores ---------------------
-
+# ---------- Execução ----------
 def run_mechanik():
     try:
         subprocess.run([sys.executable, MECHANIK_SCRIPT], check=False)
     except FileNotFoundError:
         print(f"\n[ERRO] Não encontrei {MECHANIK_SCRIPT}.")
-        print("Renomeie seu script atual para esse nome e tente novamente.\n")
         input("Enter para voltar...")
 
 def run_generic(profile_name):
@@ -86,8 +80,7 @@ def run_generic(profile_name):
         print("\n[ERRO] generic_controller.py não encontrado.")
         input("Enter para voltar...")
 
-# --------------------- Helpers de input/joystick ---------------------
-
+# ---------- Helpers joystick ----------
 def init_joystick():
     pygame.init()
     pygame.joystick.init()
@@ -153,8 +146,7 @@ def input_key_with_help(prompt):
     print(SPECIAL_KEYS_TABLE)
     return input_nonempty(prompt).lower()
 
-# --------------------- Construção de perfis ---------------------
-
+# ---------- Construção de perfis ----------
 def configure_button(profile):
     js = init_joystick()
     if js is None:
@@ -167,18 +159,32 @@ def configure_button(profile):
         return
 
     key = input_key_with_help("Digite a tecla a ser acionada (ex: a, s, space, delete, pageup, pagedown...): ")
+
     print("Tipo de botão:")
-    print("1 - acionamento único")
-    print("2 - hold (mantém pressionada enquanto apertado)")
-    t = input_int("> ", valid={1,2})
-    hold = (t == 2)
+    print("1 - press (normal)   [um acionamento com duração mínima]")
+    print("2 - hold (auto-repeat enquanto pressionado)")
+    print("3 - instant (tap seco)  [avançado, não recomendado]")
+    t = input_int("> ", valid={1,2,3})
+    mode = {1:"single", 2:"hold", 3:"instant"}[t]
+
+    press_seconds = None
+    if mode == "single":
+        ans = input("Duração do press (seg.) [Enter para usar padrão do perfil]: ").strip()
+        if ans:
+            try:
+                press_seconds = float(ans)
+            except:
+                print("Valor inválido, usando padrão do perfil.")
 
     profile.setdefault("buttons", {})
     profile["buttons"][str(btn)] = {
         "key": key,
-        "mode": "hold" if hold else "single"
+        "mode": mode
     }
-    print(f"✓ Botão {btn} configurado para tecla '{key}' ({'hold' if hold else 'single'}).")
+    if press_seconds is not None:
+        profile["buttons"][str(btn)]["press_seconds"] = press_seconds
+
+    print(f"✓ Botão {btn} → '{key}' ({mode}" + (f", {press_seconds:.2f}s" if press_seconds else "") + ").")
 
 def configure_axis(profile):
     js = init_joystick()
@@ -229,7 +235,10 @@ def configure_axis(profile):
         repeat = input_int("Repetição contínua? 1=sim, 0=não: ", valid={0,1}) == 1
         repeat_interval = 0.5
         if repeat:
-            repeat_interval = float(input_nonempty("Intervalo de repetição (seg.) [ex.: 0.5]: "))
+            try:
+                repeat_interval = float(input_nonempty("Intervalo de repetição (seg.) [ex.: 0.5]: "))
+            except:
+                print("Valor inválido, usando 0.5s.")
 
         profile["axes"][str(axis)] = {
             "type": "sections_to_keys",
@@ -242,15 +251,15 @@ def configure_axis(profile):
         print(f"✓ Eixo {axis}: seções={buckets} → teclas definidas (invert={invert}, repeat={repeat}).")
 
 def create_profile():
-    # defaults razoáveis; pode ajustar depois no JSON se quiser
+    # defaults seguros (sem "tap seco" implícito)
     profile = {
-        "press_hold_seconds": 0.5,
-        "instant_keys": ["delete", "pagedown", "pageup", "tab", "esc"],  # pode editar
-        "buttons": {},       # "idx" -> {"key": "a", "mode": "hold|single"}
-        "axes": {},          # "idx" -> {type, ...}
-        "joystick_id": 0,
+        "press_hold_seconds": 0.12,         # press normal
+        "button_hold_repeat_hold": 0.06,    # cada repetição do HOLD
         "repeat_delay": 0.35,
-        "repeat_interval": 0.05
+        "repeat_interval": 0.05,
+        "buttons": {},       # "idx" -> {"key": "a", "mode": "single|hold|instant", "press_seconds": opcional}
+        "axes": {},          # "idx" -> {type, ...}
+        "joystick_id": 0
     }
 
     while True:
@@ -273,53 +282,42 @@ def create_profile():
         else:
             print("Opção inválida.")
 
-# --------------------- Menu principal dinâmico ---------------------
-
+# ---------- Menu principal dinâmico ----------
 def main_menu():
     while True:
         profiles = load_profiles()
-        # Ordena alfabeticamente os perfis
         profile_names = sorted(profiles.keys(), key=str.lower)
-
-        # Mapeia números para ações
-        num_to_action = {}
 
         print(MAIN_HEADER.strip(), end="\n\n")
 
         # 1) mechanik (fixo)
         print("1 - mechanik")
-        num_to_action["1"] = ("mechanik", None)
+        num_to_action = {"1": ("mechanik", None)}
 
-        # 2..N) perfis do profiles.json
+        # 2..N) perfis
         start_idx = 2
         for i, name in enumerate(profile_names, start=start_idx):
             print(f"{i} - {name}")
             num_to_action[str(i)] = ("profile", name)
 
-        # 9) criar nova config
         print("\n9 - criar nova config")
-        # 0) sair
         print("0 - sair")
 
         opt = input("> ").strip()
 
         if opt == "1":
             run_mechanik()
-
         elif opt == "9":
             create_profile()
-
         elif opt == "0":
             print("Até mais!")
             return
-
         elif opt in num_to_action:
             action, payload = num_to_action[opt]
             if action == "profile" and payload:
                 run_generic(payload)
             else:
                 print("Opção inválida.")
-
         else:
             print("Opção inválida.")
 
