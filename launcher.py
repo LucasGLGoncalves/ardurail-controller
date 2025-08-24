@@ -45,7 +45,19 @@ up         → Seta para cima
 down       → Seta para baixo
 left       → Seta para esquerda
 right      → Seta para direita
+home       → Home
+insert     → Insert
+f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 → Teclas de função
+
+[Teclado numérico — aliases práticos]
+num0 num1 num2 num3 num4 num5 num6 num7 num8 num9
+num_add ( + ), num_subtract ( - ), num_multiply ( * ), num_divide ( / )
+num_decimal ( . ), num_enter ( Enter do numérico )
+
+Obs.: em muitos sistemas o pynput não diferencia numérico do topo do teclado.
+Os aliases 'numX' mapeiam para os mesmos sinais (0–9, +, -, *, /, ., Enter).
 """
+
 
 # --------------------- Utilidades de arquivo ---------------------
 
