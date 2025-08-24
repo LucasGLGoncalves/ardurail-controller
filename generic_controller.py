@@ -7,6 +7,7 @@ import pygame
 from pynput.keyboard import Controller, Key
 
 SPECIALS = {
+    # básicos
     'space': Key.space,
     'delete': Key.delete,
     'end': Key.end,
@@ -19,11 +20,35 @@ SPECIALS = {
     'esc': Key.esc,
     'enter': Key.enter,
     'backspace': Key.backspace,
+
+    # setas
     'up': Key.up,
     'down': Key.down,
     'left': Key.left,
     'right': Key.right,
+
+    # navegação extra
+    'home': Key.home,
+    'insert': Key.insert,
+
+    # funções
+    'f1': Key.f1,  'f2': Key.f2,  'f3': Key.f3,  'f4': Key.f4,
+    'f5': Key.f5,  'f6': Key.f6,  'f7': Key.f7,  'f8': Key.f8,
+    'f9': Key.f9,  'f10': Key.f10,'f11': Key.f11,'f12': Key.f12,
+
+    # --- Teclado numérico (aliases) ---
+    # Nota: muitos sistemas não diferenciam numpad dos números de topo.
+    # Estes aliases mapeiam para os mesmos sinais/teclas "comuns".
+    'num0': '0', 'num1': '1', 'num2': '2', 'num3': '3', 'num4': '4',
+    'num5': '5', 'num6': '6', 'num7': '7', 'num8': '8', 'num9': '9',
+    'num_add': '+',
+    'num_subtract': '-',
+    'num_multiply': '*',
+    'num_divide': '/',
+    'num_decimal': '.',
+    'num_enter': Key.enter,  # Enter do numérico → Enter padrão
 }
+
 
 
 kb = Controller()
