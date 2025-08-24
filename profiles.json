@@ -1,0 +1,54 @@
+{
+  "WoS3": {
+    "press_hold_seconds": 0.5,
+    "instant_keys": [
+      "delete",
+      "pagedown"
+    ],
+    "buttons": {
+      "17": {
+        "key": "h",
+        "mode": "hold"
+      },
+      "18": {
+        "key": "x",
+        "mode": "single"
+      },
+      "22": {
+        "key": "tab",
+        "mode": "single"
+      },
+      "19": {
+        "key": "f5",
+        "mode": "single"
+      },
+      "20": {
+        "key": "f6",
+        "mode": "single"
+      }
+    },
+    "axes": {
+      "1": {
+        "type": "steps_to_buttons",
+        "steps": 12,
+        "invert": false,
+        "key_pos": "up",
+        "key_neg": "down",
+        "tap_hold": 0.06,
+        "tap_interval": 0.06
+      },
+      "2": {
+        "type": "steps_to_buttons",
+        "steps": 5,
+        "invert": false,
+        "key_pos": "pageup",
+        "key_neg": "pagedown",
+        "tap_hold": 0.06,
+        "tap_interval": 0.06
+      }
+    },
+    "joystick_id": 0,
+    "repeat_delay": 0.35,
+    "repeat_interval": 0.05
+  }
+}
