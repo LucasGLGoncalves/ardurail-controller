@@ -1,0 +1,59 @@
+{
+  "World of Subways 3": {
+    "press_hold_seconds": 0.12,
+    "button_hold_repeat_hold": 0.06,
+    "repeat_delay": 0.35,
+    "repeat_interval": 0.05,
+    "buttons": {
+      "17": {
+        "key": "h",
+        "mode": "hold"
+      },
+      "18": {
+        "key": "x",
+        "mode": "single"
+      },
+      "22": {
+        "key": "tab",
+        "mode": "single"
+      },
+      "19": {
+        "key": "f5",
+        "mode": "single"
+      },
+      "20": {
+        "key": "f6",
+        "mode": "single"
+      },
+      "23": {
+        "key": "f7",
+        "mode": "single"
+      },
+      "24": {
+        "key": "f8",
+        "mode": "single"
+      }
+    },
+    "axes": {
+      "1": {
+        "type": "steps_to_buttons",
+        "steps": 12,
+        "invert": true,
+        "key_pos": "down",
+        "key_neg": "up",
+        "tap_hold": 0.06,
+        "tap_interval": 0.06
+      },
+      "2": {
+        "type": "steps_to_buttons",
+        "steps": 5,
+        "invert": true,
+        "key_pos": "pagedown",
+        "key_neg": "pageup",
+        "tap_hold": 0.06,
+        "tap_interval": 0.06
+      }
+    },
+    "joystick_id": 0
+  }
+}

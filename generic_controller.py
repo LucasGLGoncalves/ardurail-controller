@@ -6,6 +6,7 @@ from pathlib import Path
 import pygame
 from pynput.keyboard import Controller, Key
 
+# ====== Teclas especiais suportadas ======
 SPECIALS = {
     # básicos
     'space': Key.space,
@@ -36,9 +37,7 @@ SPECIALS = {
     'f5': Key.f5,  'f6': Key.f6,  'f7': Key.f7,  'f8': Key.f8,
     'f9': Key.f9,  'f10': Key.f10,'f11': Key.f11,'f12': Key.f12,
 
-    # --- Teclado numérico (aliases) ---
-    # Nota: muitos sistemas não diferenciam numpad dos números de topo.
-    # Estes aliases mapeiam para os mesmos sinais/teclas "comuns".
+    # numpad (aliases; na maioria dos SOs não diferencia do topo)
     'num0': '0', 'num1': '1', 'num2': '2', 'num3': '3', 'num4': '4',
     'num5': '5', 'num6': '6', 'num7': '7', 'num8': '8', 'num9': '9',
     'num_add': '+',
@@ -48,8 +47,6 @@ SPECIALS = {
     'num_decimal': '.',
     'num_enter': Key.enter,  # Enter do numérico → Enter padrão
 }
-
-
 
 kb = Controller()
 
@@ -72,10 +69,12 @@ def main():
     cfg = data[args.profile]
 
     joystick_id = cfg.get("joystick_id", 0)
-    press_hold_seconds = float(cfg.get("press_hold_seconds", 0.5))
-    instant_keys = set(k.lower() for k in cfg.get("instant_keys", []))
-    repeat_delay = float(cfg.get("repeat_delay", 0.35))
-    repeat_interval = float(cfg.get("repeat_interval", 0.05))
+
+    # DURAÇÕES PADRÃO (segundos)
+    press_hold_seconds = float(cfg.get("press_hold_seconds", 0.12))          # press normal
+    button_hold_repeat_hold = float(cfg.get("button_hold_repeat_hold", 0.06))# duração de cada repetição no modo HOLD
+    repeat_delay = float(cfg.get("repeat_delay", 0.35))                      # atraso inicial do HOLD
+    repeat_interval = float(cfg.get("repeat_interval", 0.05))                # intervalo do HOLD
 
     pygame.init()
     pygame.joystick.init()
@@ -100,10 +99,13 @@ def main():
     step_queue = {}        # axis -> {"pos": int, "neg": int, "next": float}
 
     def schedule_press(key_label, now, hold_s=None, force_instant=False):
+        """
+        - press/hold: usa hold_s (ou press_hold_seconds) para manter pressionado antes de soltar
+        - instant: tap seco (apenas se force_instant=True explicitamente)
+        """
         keyobj = resolve_key(key_label)
-        kname = key_label.lower() if isinstance(key_label, str) else str(key_label)
 
-        if force_instant or (kname in instant_keys):
+        if force_instant:
             kb.press(keyobj); kb.release(keyobj)
             return
 
@@ -144,28 +146,32 @@ def main():
         # ---- Botões
         for b in range(num_buttons):
             s = js.get_button(b)
-            if s == 1 and last_button[b] == 0:
-                bmap = cfg.get("buttons", {}).get(str(b))
-                if bmap:
-                    key = bmap.get("key")
-                    if bmap.get("mode","single") == "hold":
-                        schedule_press(key, now)
-                        hold_state[b] = {"held": True, "next": now + repeat_delay}
-                    else:
-                        schedule_press(key, now, force_instant=(key.lower() in instant_keys))
-                last_button[b] = s
-                continue
+            bmap = cfg.get("buttons", {}).get(str(b))
+            if bmap:
+                mode = bmap.get("mode", "single")  # 'single' | 'hold' | 'instant'
+                key = bmap.get("key")
+                press_seconds_override = bmap.get("press_seconds")  # opcional por botão
 
-            if s == 1 and last_button[b] == 1:
-                bmap = cfg.get("buttons", {}).get(str(b))
-                if bmap and bmap.get("mode") == "hold":
+                # borda de subida
+                if s == 1 and last_button[b] == 0:
+                    if mode == "hold":
+                        schedule_press(key, now, hold_s=button_hold_repeat_hold)
+                        hold_state[b] = {"held": True, "next": now + repeat_delay}
+                    elif mode == "instant":
+                        schedule_press(key, now, force_instant=True)
+                    else:  # single (press normal com duração mínima)
+                        duration = float(press_seconds_override) if press_seconds_override else press_hold_seconds
+                        schedule_press(key, now, hold_s=duration)
+
+                # mantendo
+                if s == 1 and last_button[b] == 1 and mode == "hold":
                     info = hold_state.get(b)
                     if info and now >= info["next"]:
-                        schedule_press(bmap["key"], now)
+                        schedule_press(key, now, hold_s=button_hold_repeat_hold)
                         info["next"] = now + repeat_interval
 
-            if s == 0 and last_button[b] == 1:
-                if b in hold_state:
+                # borda de descida
+                if s == 0 and last_button[b] == 1 and b in hold_state:
                     hold_state.pop(b, None)
 
             last_button[b] = s
@@ -211,7 +217,6 @@ def main():
                 buckets = int(ac.get("buckets", len(ac.get("keys", [])) or 1))
                 keys = list(ac.get("keys", []))
                 if len(keys) != buckets:
-                    # segurança: se o JSON tiver divergência, ajusta
                     if len(keys) < buckets:
                         keys += [""]*(buckets-len(keys))
                     else:
@@ -226,7 +231,7 @@ def main():
                 if cur_bucket != last_b:
                     k = keys[cur_bucket]
                     if k:
-                        schedule_press(k, now)
+                        schedule_press(k, now, hold_s=press_hold_seconds)
                     section_bucket[a] = cur_bucket
                     if repeat:
                         section_repeat[a] = now + repeat_interval
@@ -236,7 +241,7 @@ def main():
                     if now >= nxt:
                         k = keys[cur_bucket]
                         if k:
-                            schedule_press(k, now)
+                            schedule_press(k, now, hold_s=press_hold_seconds)
                         section_repeat[a] = now + repeat_interval
 
         # soltar teclas cuja janela acabou
