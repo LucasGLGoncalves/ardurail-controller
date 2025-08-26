@@ -116,6 +116,22 @@ def main():
             kb.press(keyobj)
             active_holds[keyobj] = end_time
 
+    def tap_key_distinct(key_label, now, hold_s):
+        """
+        Garante um TAP distinto, mesmo se a mesma tecla ainda estiver ativa:
+        - se estiver ativa, solta já; em seguida pressiona e agenda nova soltura.
+        """
+        keyobj = resolve_key(key_label)
+        # Se ainda está segurando, solta primeiro para “resetar” o tap.
+        if keyobj in active_holds:
+            try:
+                kb.release(keyobj)
+            except Exception:
+                pass
+            active_holds.pop(keyobj, None)
+        # Agora pressiona e agenda soltura normal
+        schedule_press(key_label, now, hold_s=hold_s, force_instant=False)
+
     def process_releases(now):
         to_rel = [k for k,t in active_holds.items() if now >= t]
         for k in to_rel:
@@ -188,7 +204,10 @@ def main():
                 key_pos = ac.get("key_pos", "down")  # delta > 0
                 key_neg = ac.get("key_neg", "up")    # delta < 0
                 tap_hold = float(ac.get("tap_hold", 0.06))
-                tap_interval = float(ac.get("tap_interval", 0.06))
+                tap_interval_cfg = float(ac.get("tap_interval", 0.06))
+
+                # Garante pacing seguro: intervalo >= hold + 0.01
+                safe_interval = max(tap_interval_cfg, tap_hold + 0.01)
 
                 st = axis_state.setdefault(a, {"last_step": axis_to_step(val, steps, invert)})
                 cur_step = axis_to_step(val, steps, invert)
@@ -201,17 +220,17 @@ def main():
                         q["neg"] += -delta
                     st["last_step"] = cur_step
 
-                # dispara sequenciado por eixo
+                # dispara sequenciado por eixo (com taps distintos)
                 q = step_queue.setdefault(a, {"pos":0, "neg":0, "next":now})
                 if now >= q["next"]:
                     if q["pos"] > 0:
-                        schedule_press(key_pos, now, hold_s=tap_hold)
+                        tap_key_distinct(key_pos, now, hold_s=tap_hold)
                         q["pos"] -= 1
-                        q["next"] = now + tap_interval
+                        q["next"] = now + safe_interval
                     elif q["neg"] > 0:
-                        schedule_press(key_neg, now, hold_s=tap_hold)
+                        tap_key_distinct(key_neg, now, hold_s=tap_hold)
                         q["neg"] -= 1
-                        q["next"] = now + tap_interval
+                        q["next"] = now + safe_interval
 
             elif ac["type"] == "sections_to_keys":
                 buckets = int(ac.get("buckets", len(ac.get("keys", [])) or 1))

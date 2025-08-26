@@ -55,5 +55,49 @@
       }
     },
     "joystick_id": 0
+  },
+  "Pico-8 Cab Ride": {
+    "press_hold_seconds": 0.12,
+    "button_hold_repeat_hold": 0.06,
+    "repeat_delay": 0.35,
+    "repeat_interval": 0.05,
+    "buttons": {
+      "17": {
+        "key": "z",
+        "mode": "single"
+      },
+      "18": {
+        "key": "x",
+        "mode": "single"
+      },
+      "23": {
+        "key": "left",
+        "mode": "single"
+      },
+      "24": {
+        "key": "right",
+        "mode": "single"
+      },
+      "22": {
+        "key": "down",
+        "mode": "single"
+      },
+      "21": {
+        "key": "up",
+        "mode": "single"
+      }
+    },
+    "axes": {
+      "2": {
+        "type": "steps_to_buttons",
+        "steps": 8,
+        "invert": false,
+        "key_pos": "up",
+        "key_neg": "down",
+        "tap_hold": 0.06,
+        "tap_interval": 0.06
+      }
+    },
+    "joystick_id": 0
   }
 }
